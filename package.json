@@ -1,7 +1,7 @@
 {
   "name": "virus-scanner-service",
   "description": "Microservice to perform a virus scan on uploaded files.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "app.js",
   "scripts": {
     "test": "eslint --fix ."

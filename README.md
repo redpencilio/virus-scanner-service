@@ -16,7 +16,7 @@ version: '3.4'
 
 services:
   virus-scanner:
-    build: https://github.com/peternowee/virus-scanner-service.git#v0.0.1
+    build: https://github.com/peternowee/virus-scanner-service.git#v0.0.2
     links:
       - database:database
 ```
@@ -29,6 +29,34 @@ E.g.
   match "/virus-scanner/*path" do
     Proxy.forward conn, path, "http://virus-scanner/virus-scanner/"
   end
+```
+
+Add delta-notifier to your stack as described in the [delta-notifier
+documentation](https://github.com/mu-semtech/delta-notifier#readme).
+Then configure delta-notifier to send relevant deltas to virus-scanner
+by adding the following snippet to `config/delta/rules.js`:
+
+```js
+export default [
+  {
+    match: {
+      predicate: {
+        type: 'uri',
+        value: 'http://www.semanticdesktop.org/ontologies/2007/01/19/nie#dataSource'
+      },
+    },
+    callback: {
+      url: 'http://virus-scanner/delta',
+      method: 'POST',
+    },
+    options: {
+      resourceFormat: 'v0.0.1',
+      gracePeriod: 1000,
+      ignoreFromSelf: true,
+    }
+  },
+  // Other delta listeners
+]
 ```
 
 Run `docker-compose up` and the service should be reachable through the
@@ -57,7 +85,19 @@ services:
       - "9229:9229"
     environment:
       NODE_ENV: "development"
+      LOG_INCOMING_DELTA: "true"
     volumes:
       - ./data/files:/share
       - ../virus-scanner-service/:/app/
 ```
+
+## Configuration
+
+### Environment variables
+
+The following enviroment variables can be configured:
+
+* `LOG_INCOMING_DELTA (default: "false")`: log the delta message as
+  received from the delta-notifier to the console.
+* The environment variables recognized by
+  [mu-javascript-template](https://github.com/mu-semtech/mu-javascript-template/blob/v1.7.0/README.md#environment-variables).
