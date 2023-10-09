@@ -1,6 +1,10 @@
+// eslint-disable-next-line no-unused-vars
+import { NamedNode, triple } from 'rdflib';
 import bodyParser from 'body-parser';
 import { LOG_INCOMING_DELTA } from './config';
 import { app, query, errorHandler } from 'mu';
+// eslint-disable-next-line no-unused-vars
+import { Delta } from './lib/delta';
 
 app.get('/', function (req, res) {
   res.send('Hello from virus-scanner-service');
@@ -31,7 +35,7 @@ app.post(
         console.log(`Receiving delta : ${JSON.stringify(body)}`);
       }
 
-      //await processDelta(body);
+      // ...
 
       res.status(202).send();
     } catch (error) {
