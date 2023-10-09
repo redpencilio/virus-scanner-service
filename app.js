@@ -3,7 +3,6 @@ import { NamedNode, triple } from 'rdflib';
 import bodyParser from 'body-parser';
 import { LOG_INCOMING_DELTA } from './config';
 import { app, query, errorHandler } from 'mu';
-// eslint-disable-next-line no-unused-vars
 import { Delta } from './lib/delta';
 
 app.get('/', function (req, res) {
@@ -35,7 +34,14 @@ app.post(
         console.log(`Receiving delta : ${JSON.stringify(body)}`);
       }
 
-      // ...
+      const delta = new Delta(req.body);
+
+      if (!delta.inserts.length) {
+        console.log(
+          'Delta does not contain any insertions. Nothing should happen.',
+        );
+        return res.status(204).send();
+      }
 
       res.status(202).send();
     } catch (error) {
