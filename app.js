@@ -1,4 +1,3 @@
-// eslint-disable-next-line no-unused-vars
 import { NamedNode, triple } from 'rdflib';
 import bodyParser from 'body-parser';
 import { LOG_INCOMING_DELTA } from './config';
@@ -42,6 +41,35 @@ app.post(
         );
         return res.status(204).send();
       }
+
+      const allFiles = delta
+        .getInsertsFor(
+          triple(
+            undefined,
+            new NamedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'),
+            new NamedNode(
+              'http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#FileDataObject',
+            ),
+          ),
+        )
+        .map((insert) => insert.subject.value);
+
+      const allPhysicalFiles = allFiles.filter(
+        (fileIRI) => fileIRI.slice(0, 8) === 'share://',
+      );
+
+      if (!allPhysicalFiles.length) {
+        console.log(
+          'No FileDataObject inserts for physical files. Nothing should happen.',
+        );
+        return res.status(204).send();
+      }
+
+      const physicalFiles = [...new Set(allPhysicalFiles)]; //make them unique
+
+      console.log(
+        'Physical files to be processed:' + JSON.stringify(physicalFiles),
+      );
 
       res.status(202).send();
     } catch (error) {
