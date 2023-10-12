@@ -19,6 +19,8 @@ services:
     build: https://github.com/peternowee/virus-scanner-service.git#v0.0.2
     links:
       - database:database
+    volumes:
+      - ./data/files:/share
 ```
 
 Add rules to `dispatcher.ex` to dispatch requests to this service. E.g.
@@ -85,7 +87,6 @@ services:
       NODE_ENV: "development"
       LOG_INCOMING_DELTA: "true"
     volumes:
-      - ./data/files:/share
       - ../virus-scanner-service/:/app/
 ```
 
