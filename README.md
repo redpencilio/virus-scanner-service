@@ -16,7 +16,7 @@ version: '3.4'
 
 services:
   virus-scanner:
-    build: https://github.com/peternowee/virus-scanner-service.git#v0.0.3
+    build: https://github.com/peternowee/virus-scanner-service.git#v0.0.4
     links:
       - database:database
     volumes:
