@@ -2,9 +2,17 @@
 
 Microservice to perform a virus scan on uploaded files.
 
+This service listens for delta notifications about new files and scans
+those for viruses.
+
 [![Project Status: WIP – Initial development is in progress](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
 
 ## Getting started
+
+Prerequisites:
+- [file-service](https://github.com/mu-semtech/file-service)
+- [mu-authorization](https://github.com/mu-semtech/mu-authorization)
+- [delta-notifier](https://github.com/mu-semtech/delta-notifier)
 
 ### Adding the service to your stack
 
