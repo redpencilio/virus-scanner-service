@@ -21,4 +21,6 @@ RUN export DEBIAN_FRONTEND=noninteractive; apt-get -y --error-on=any update && a
 # "Heuristics.Limits.Exceeded".
 RUN echo "AlertExceedsMax true" >> /etc/clamav/clamd.conf
 
+VOLUME /var/lib/clamav
+
 CMD bash app/boot-virus-scanner.sh

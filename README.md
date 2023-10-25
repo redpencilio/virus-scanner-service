@@ -29,6 +29,12 @@ services:
       - database:database
     volumes:
       - ./data/files:/share
+      - type: volume
+        source: virus-scanner-signatures
+        target: /var/lib/clamav
+
+volumes:
+  virus-scanner-signatures:
 ```
 
 Add rules to `dispatcher.ex` to dispatch requests to this service. E.g.
