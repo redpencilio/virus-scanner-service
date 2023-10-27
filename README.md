@@ -24,9 +24,11 @@ version: '3.4'
 
 services:
   virus-scanner:
-    build: https://github.com/peternowee/virus-scanner-service.git#v0.0.4
+    build: https://github.com/peternowee/virus-scanner-service.git#v0.0.6
     links:
       - database:database
+    environment:
+      VIRUS_SCANNER_CLAMD_USER: # "root"
     volumes:
       - ./data/files:/share
       - type: volume
@@ -36,6 +38,16 @@ services:
 volumes:
   virus-scanner-signatures:
 ```
+
+Note: The ClamAV authors do not recommend running `clamd` as `root` for
+safety reasons because ClamAV scans untrusted files that may be
+malware. However, the file-service currently saves its files with
+access permission for `root` only. Consider the security implications
+for your situation before uncommenting the line to let `clamd` run as
+`root`:
+
+      VIRUS_SCANNER_CLAMD_USER: "root"
+
 
 Add rules to `dispatcher.ex` to dispatch requests to this service. E.g.
 
@@ -110,7 +122,9 @@ services:
 
 The following enviroment variables can be configured:
 
-* `LOG_INCOMING_DELTA (default: "false")`: log the delta message as
+* `LOG_INCOMING_DELTA (default: "false")`: Log the delta message as
   received from the delta-notifier to the console.
+* `VIRUS_SCANNER_CLAMD_USER (default: "clamav")`: User to run the
+  ClamAV daemon `clamd` as.
 * The environment variables recognized by
   [mu-javascript-template](https://github.com/mu-semtech/mu-javascript-template/blob/v1.7.0/README.md#environment-variables).
