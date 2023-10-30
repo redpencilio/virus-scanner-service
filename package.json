@@ -23,6 +23,7 @@
     "prettier": "3.0.3"
   },
   "dependencies": {
+    "clamscan": "^2.1.2",
     "rdflib": "^2.2.32"
   }
 }
