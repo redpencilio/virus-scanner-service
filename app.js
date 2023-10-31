@@ -4,9 +4,47 @@ import { LOG_INCOMING_DELTA } from './config';
 import { app, query, errorHandler } from 'mu';
 import { Delta } from './lib/delta';
 import { existsSync } from 'node:fs';
+import NodeClam from 'clamscan';
+
+async function hasVirus(path) {
+  const scanner = await new NodeClam().init({
+    clamscan: {
+      // Do not use clamscan binary because it loads database on every run.
+      active: false,
+    },
+    clamdscan: {
+      socket: '/var/run/clamav/clamd.ctl', // Unix domain socket
+      host: false, // Do not connect via TCP interface
+      port: false, // Do not connect via TCP interface
+      localFallback: false, // Do not use local preferred binary to scan if socket/tcp fails
+      active: true,
+    },
+    preference: 'clamdscan',
+  });
+  const { isInfected, file, viruses } = await scanner.isInfected(path);
+  console.log({ isInfected, file, viruses });
+  return isInfected;
+  // For now, error handling will be the responsibility of the function caller.
+}
 
 app.get('/', function (req, res) {
   res.send('Hello from virus-scanner-service');
+});
+
+app.get('/virus-scanner/test', async function (req, res) {
+  const testfiles = [
+    '/usr/share/clamav-testfiles/clam.zip',
+    '/usr/share/doc/clamav-base/changelog.gz',
+  ];
+  const expectedresults = [true, false];
+
+  const testresults = await Promise.all(
+    testfiles.map(async (testfile) => await hasVirus(testfile)),
+  );
+
+  const summary = { testfiles, expectedresults, testresults };
+  console.log(summary);
+  res.send(JSON.stringify(summary));
 });
 
 app.get('/virus-scanner/query', async function (req, res) {
