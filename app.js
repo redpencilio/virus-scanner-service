@@ -103,7 +103,7 @@ app.post(
                 filesUnableToScan.push(file);
                 break;
               default:
-                throw new Error('Unexpected return value from hasVirus().')
+                throw new Error('Unexpected return value from hasVirus().');
             }
           } catch (e) {
             console.warn('Other error: ' + e);
@@ -112,12 +112,30 @@ app.post(
         }
       }
 
-      console.log('- Files not found by virus-scanner-service : ' + JSON.stringify(filesNotFound));
-      console.log('- Files sent to clamscan JS                : ' + JSON.stringify(filesToScan));
-      console.log('  - Clean                                  : ' + JSON.stringify(filesClean));
-      console.log('  - Infected                               : ' + JSON.stringify(filesInfected));
-      console.log('  - Unable to scan                         : ' + JSON.stringify(filesUnableToScan));
-      console.log('  - Other error                            : ' + JSON.stringify(filesOtherError));
+      console.log(
+        '- Files not found by virus-scanner-service : ' +
+          JSON.stringify(filesNotFound),
+      );
+      console.log(
+        '- Files sent to clamscan JS                : ' +
+          JSON.stringify(filesToScan),
+      );
+      console.log(
+        '  - Clean                                  : ' +
+          JSON.stringify(filesClean),
+      );
+      console.log(
+        '  - Infected                               : ' +
+          JSON.stringify(filesInfected),
+      );
+      console.log(
+        '  - Unable to scan                         : ' +
+          JSON.stringify(filesUnableToScan),
+      );
+      console.log(
+        '  - Other error                            : ' +
+          JSON.stringify(filesOtherError),
+      );
 
       res.status(202).send();
     } catch (error) {
