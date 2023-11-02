@@ -95,7 +95,9 @@ app.post(
                 filesClean.push(file);
                 break;
               case true:
-                console.log('Infected');
+                console.log(
+                  'Infected with ' + JSON.stringify(fileScanResult.viruses),
+                );
                 filesInfected.push(file);
                 break;
               case null:
