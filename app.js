@@ -21,11 +21,10 @@ async function hasVirus(path) {
     },
     preference: 'clamdscan',
   });
-  // TODO: Store entire result object.
-  const { isInfected, file, viruses } = await scanner.isInfected(path);
-  console.log({ isInfected, file, viruses });
+  const result = await scanner.isInfected(path);
+  console.log(result);
   // TODO: Return entire result object, not just result.isInfected.
-  return isInfected;
+  return result.isInfected;
   // For now, error handling will be the responsibility of the function caller.
 }
 
