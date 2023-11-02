@@ -6,27 +6,6 @@ import { Delta } from './lib/delta';
 import { existsSync } from 'node:fs';
 import NodeClam from 'clamscan';
 
-async function scanFile(path) {
-  const scanner = await new NodeClam().init({
-    clamscan: {
-      // Do not use clamscan binary because it loads database on every run.
-      active: false,
-    },
-    clamdscan: {
-      socket: '/var/run/clamav/clamd.ctl', // Unix domain socket
-      host: false, // Do not connect via TCP interface
-      port: false, // Do not connect via TCP interface
-      localFallback: false, // Do not use local preferred binary to scan if socket/tcp fails
-      active: true,
-    },
-    preference: 'clamdscan',
-  });
-  const result = await scanner.isInfected(path);
-  console.log(result);
-  return result;
-  // For now, error handling will be the responsibility of the function caller.
-}
-
 app.get('/', function (req, res) {
   res.send('Hello from virus-scanner-service');
 });
@@ -149,3 +128,38 @@ app.post(
 );
 
 app.use(errorHandler);
+
+/**
+ * Scans a file for viruses.
+ *
+ * @async
+ * @function
+ * @param {String} path - Path of file to scan.
+ * @returns {Object} As per clamscan 2.1.2:
+ * - `file` (string) The original `filePath` passed into the `isInfected`
+ *                   method.
+ * - `isInfected` (boolean) **True**: File is infected;
+ *                          **False**: File is clean.
+ *                          **NULL**: Unable to scan.
+ * - `viruses` (array) An array of any viruses found in the scanned file.
+ */
+async function scanFile(path) {
+  const scanner = await new NodeClam().init({
+    clamscan: {
+      // Do not use clamscan binary because it loads database on every run.
+      active: false,
+    },
+    clamdscan: {
+      socket: '/var/run/clamav/clamd.ctl', // Unix domain socket
+      host: false, // Do not connect via TCP interface
+      port: false, // Do not connect via TCP interface
+      localFallback: false, // Do not use local preferred binary to scan if socket/tcp fails
+      active: true,
+    },
+    preference: 'clamdscan',
+  });
+  const result = await scanner.isInfected(path);
+  console.log(result);
+  return result;
+  // For now, error handling will be the responsibility of the function caller.
+}
