@@ -6,7 +6,7 @@ import { Delta } from './lib/delta';
 import { existsSync } from 'node:fs';
 import NodeClam from 'clamscan';
 
-async function hasVirus(path) {
+async function scanFile(path) {
   const scanner = await new NodeClam().init({
     clamscan: {
       // Do not use clamscan binary because it loads database on every run.
@@ -23,8 +23,7 @@ async function hasVirus(path) {
   });
   const result = await scanner.isInfected(path);
   console.log(result);
-  // TODO: Return entire result object, not just result.isInfected.
-  return result.isInfected;
+  return result;
   // For now, error handling will be the responsibility of the function caller.
 }
 
@@ -109,7 +108,8 @@ app.post(
           filesToScan.push(file);
           console.log('Running virus scan on file: ' + JSON.stringify(file));
           try {
-            const fileHasVirus = await hasVirus(file);
+            const fileScanResult = await scanFile(file);
+            const fileHasVirus = fileScanResult.isInfected;
             switch (fileHasVirus) {
               case false:
                 console.log('Clean');
