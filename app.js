@@ -21,8 +21,10 @@ async function hasVirus(path) {
     },
     preference: 'clamdscan',
   });
+  // TODO: Store entire result object.
   const { isInfected, file, viruses } = await scanner.isInfected(path);
   console.log({ isInfected, file, viruses });
+  // TODO: Return entire result object, not just result.isInfected.
   return isInfected;
   // For now, error handling will be the responsibility of the function caller.
 }
@@ -121,27 +123,54 @@ app.post(
         physicalFileIRI.replace(physicalFileIRIPrefix, physicalFilePathPrefix),
       );
 
+      // TODO: Combine in an object.
+      // TODO: Transpose structure from results > file to files > result,
+      //       to allow for more details per result, e.g. viruses found.
       const filesNotFound = [];
-      const filesToScan = [];
+      const filesToScan = []; // TODO: Remove, because union of the arrays below.
       const filesClean = [];
-      const filesInfected = [];
-      const filesError = [];
-      physicalFilePaths.forEach(function (file) {
+      const filesInfected = []; // TODO: Include viruses found per file.
+      const filesUnableToScan = [];
+      const filesOtherError = [];
+
+      for (const file of physicalFilePaths) {
         if (!existsSync(file)) {
-          console.warn('File not found: ' + JSON.stringify(file));
+          console.log('File not found: ' + JSON.stringify(file));
           filesNotFound.push(file);
         } else {
           filesToScan.push(file);
           console.log('Running virus scan on file: ' + JSON.stringify(file));
-          // Run virus scan on file.
+          try {
+            const fileHasVirus = await hasVirus(file);
+            switch (fileHasVirus) {
+              case false:
+                console.log('Clean');
+                filesClean.push(file);
+                break;
+              case true:
+                console.log('Infected');
+                filesInfected.push(file);
+                break;
+              case null:
+                console.log('Unable to scan');
+                filesUnableToScan.push(file);
+                break;
+              default:
+                throw new Error('Unexpected return value from hasVirus().')
+            }
+          } catch (e) {
+            console.warn('Other error: ' + e);
+            filesOtherError.push(file);
+          }
         }
-      });
+      }
 
-      console.log('- Files not found       : ' + JSON.stringify(filesNotFound));
-      console.log('- Files sent to scanner : ' + JSON.stringify(filesToScan));
-      console.log('  - Clean               : ' + JSON.stringify(filesClean));
-      console.log('  - Infected            : ' + JSON.stringify(filesInfected));
-      console.log('  - Other error         : ' + JSON.stringify(filesError));
+      console.log('- Files not found by virus-scanner-service : ' + JSON.stringify(filesNotFound));
+      console.log('- Files sent to clamscan JS                : ' + JSON.stringify(filesToScan));
+      console.log('  - Clean                                  : ' + JSON.stringify(filesClean));
+      console.log('  - Infected                               : ' + JSON.stringify(filesInfected));
+      console.log('  - Unable to scan                         : ' + JSON.stringify(filesUnableToScan));
+      console.log('  - Other error                            : ' + JSON.stringify(filesOtherError));
 
       res.status(202).send();
     } catch (error) {
