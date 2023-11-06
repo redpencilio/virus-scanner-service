@@ -53,7 +53,7 @@ Add rules to `dispatcher.ex` to dispatch requests to this service. E.g.
 
 ```elixir
   match "/virus-scanner/*path" do
-    Proxy.forward conn, path, "http://virus-scanner/virus-scanner/"
+    Proxy.forward conn, path, "http://virus-scanner/"
   end
 ```
 
@@ -86,7 +86,7 @@ export default [
 ```
 
 Run `docker-compose up` and the service should be reachable through the
-dispatcher, for example at http://localhost/virus-scanner/query .
+dispatcher, for example at http://localhost/virus-scanner/ .
 
 ## Development
 
