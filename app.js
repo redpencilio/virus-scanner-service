@@ -58,16 +58,7 @@ app.post(
         'Physical file IRIs to be processed: ' + JSON.stringify(physicalFiles),
       );
 
-      // The URI of the stored file uses the share:// protocol and
-      // reflects the location where the file resides as a relative
-      // path to the share folder. E.g. share://uploads/my-file.pdf
-      // means the file is stored at /share/uploads/my-file.pdf.
-      // -- https://github.com/mu-semtech/file-service/blob/v3.3.0/README.md#description
-      const physicalFileIRIPrefix = /^share:\/\//;
-      const physicalFilePathPrefix = '/share/';
-      const physicalFilePaths = physicalFiles.map((physicalFileIRI) =>
-        physicalFileIRI.replace(physicalFileIRIPrefix, physicalFilePathPrefix),
-      );
+      const physicalFilePaths = physicalFiles.map(filePathFromIRI);
 
       // TODO: Combine in an object.
       // TODO: Transpose structure from results > file to files > result,
@@ -182,4 +173,17 @@ async function scanFile(path) {
   console.log(result);
   return result;
   // For now, error handling will be the responsibility of the function caller.
+}
+
+/**
+ * Converts a physical file IRI to a file path
+ *
+ * The URI of the stored file uses the share:// protocol and
+ * reflects the location where the file resides as a relative
+ * path to the share folder. E.g. share://uploads/my-file.pdf
+ * means the file is stored at /share/uploads/my-file.pdf.
+ * -- https://github.com/mu-semtech/file-service/blob/v3.3.0/README.md#description
+ */
+function filePathFromIRI(physicalFileIRI) {
+  return physicalFileIRI.replace(/^share:\/\//, '/share/');
 }
