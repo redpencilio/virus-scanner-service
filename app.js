@@ -1,7 +1,19 @@
 import { NamedNode, triple } from 'rdflib';
 import bodyParser from 'body-parser';
-import { LOG_INCOMING_DELTA } from './config';
-import { app, errorHandler } from 'mu';
+import {
+  LOG_INCOMING_DELTA,
+  LOG_INCOMING_SCAN_REQUESTS,
+  MU_APPLICATION_GRAPH,
+} from './config';
+import {
+  app,
+  query,
+  update,
+  errorHandler,
+  sparqlEscapeDateTime,
+  sparqlEscapeString,
+  sparqlEscapeUri,
+} from 'mu';
 import { Delta } from './lib/delta';
 import { existsSync } from 'node:fs';
 import NodeClam from 'clamscan';
@@ -76,7 +88,6 @@ app.post(
           filesNotFound.push(file);
         } else {
           filesToScan.push(file);
-          console.log('Running virus scan on file: ' + JSON.stringify(file));
           try {
             const fileScanResult = await scanFile(file);
             const fileHasVirus = fileScanResult.isInfected;
@@ -138,6 +149,93 @@ app.post(
   },
 );
 
+/**
+ * Scans a single file and stores the result.
+ *
+ * @param {Object} body Request body should be in JSON-format with
+ *                      `file` containing a logical file IRI as a single String.
+ *                      E.g. { "file": "http://mu.semte.ch/services/file-service/files/6543bc046ea4f3000e00000c" }
+ * @return [201] if file was found in database and scan result stored
+ *               (even if the scan failed). The stored scan result will
+ *               be in response body.
+ * @return [400] if request malformed.
+ * @return [422] if no related physical file is found in database.
+ */
+app.post(
+  '/scan',
+  bodyParser.json({ limit: '50mb' }),
+  async function (req, res) {
+    try {
+      const stixMalwareAnalysis = {
+        started: new Date(),
+        ended: undefined,
+        result: 'unknown',
+        resultName: undefined,
+      };
+      const body = req.body;
+      if (LOG_INCOMING_SCAN_REQUESTS) {
+        console.log(`Receiving scan request : ${JSON.stringify(body)}`);
+      }
+
+      const logicalFileIRI = body.file;
+      if (
+        !(
+          typeof logicalFileIRI === 'string' || logicalFileIRI instanceof String
+        ) ||
+        !logicalFileIRI.length
+      ) {
+        return res.status(400).send('`file` not a non-empty String');
+      }
+
+      const physicalFileIRI = await getPhysicalFileIRI(logicalFileIRI);
+      if (physicalFileIRI === null) {
+        return res
+          .status(422)
+          .send('No physical file IRI found for: ' + logicalFileIRI);
+      }
+
+      const file = filePathFromIRI(physicalFileIRI);
+
+      console.log({ logicalFileIRI, physicalFileIRI, file });
+
+      if (!existsSync(file)) {
+        console.log('File not found on disk: ' + JSON.stringify(file));
+      } else {
+        try {
+          const fileScanResult = await scanFile(file);
+          const fileHasVirus = fileScanResult.isInfected;
+          switch (fileHasVirus) {
+            case false:
+              stixMalwareAnalysis.result = 'benign';
+              break;
+            case true:
+              stixMalwareAnalysis.result = 'malicious';
+              stixMalwareAnalysis.resultName = JSON.stringify(
+                fileScanResult.viruses,
+              );
+              break;
+            case null:
+              console.log('clamscan JS returned null: Unable to scan');
+              break;
+            default:
+              throw new Error('Unexpected return value from clamscan JS');
+          }
+        } catch (e) {
+          console.log('Other error while attempting to scan: ' + e);
+        }
+      }
+      stixMalwareAnalysis.ended = new Date();
+      console.log(stixMalwareAnalysis);
+      storeMalwareAnalysis(logicalFileIRI, stixMalwareAnalysis);
+      console.log();
+      res.status(202).send();
+    } catch (e) {
+      console.log(e);
+      res.status(500).send('Uncaught error in /scan: ' + e);
+    }
+  },
+);
+
 app.use(errorHandler);
 
 /**
@@ -155,6 +253,7 @@ app.use(errorHandler);
  * - `viruses` (array) An array of any viruses found in the scanned file.
  */
 async function scanFile(path) {
+  console.log('Running virus scan on file: ' + JSON.stringify(path));
   const scanner = await new NodeClam().init({
     clamscan: {
       // Do not use clamscan binary because it loads database on every run.
@@ -176,6 +275,24 @@ async function scanFile(path) {
 }
 
 /**
+ * Gets the physical file IRI associated to a virtual/logical file IRI
+ */
+async function getPhysicalFileIRI(logicalFileIRI) {
+  const result = await query(`
+    PREFIX nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
+    SELECT ?physicalFile
+    WHERE {
+      GRAPH ${sparqlEscapeUri(MU_APPLICATION_GRAPH)} {
+        ?physicalFile nie:dataSource ${sparqlEscapeUri(logicalFileIRI)} .
+      }
+    }
+  `);
+  if (result.results.bindings.length)
+    return result.results.bindings[0]['physicalFile'].value;
+  return null;
+}
+
+/**
  * Converts a physical file IRI to a file path
  *
  * The URI of the stored file uses the share:// protocol and
@@ -186,4 +303,25 @@ async function scanFile(path) {
  */
 function filePathFromIRI(physicalFileIRI) {
   return physicalFileIRI.replace(/^share:\/\//, '/share/');
+}
+
+/**
+ * Stores the result of a malware-scan in the database.
+ *
+ * @param {String} result - The malware scan result, usually one of the values
+ *                          from STIX 2.1 Malware Result Vocabulary malware-result-ov:
+ *                          "malicious", "suspicious", "benign" or "unknown".
+ *                          https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_dtrq0daddkwa
+ * @return TODO: String with id or an entire resource object?
+ */
+async function storeMalwareAnalysis(logicalFileIRI, stixMalwareAnalysis) {
+  //PREFIX stix: <http://docs.oasis-open.org/cti/ns/stix#>
+  //PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+  // GRAPH ${sparqlEscapeUri(MU_APPLICATION_GRAPH)}
+  //<http://data.gift/virus-scanner/analysis/id/1> a stix:MalwareAnalysis;
+  //mu:uuid "a-uuid-so-resource-can-render-it";
+  //stix:analysis_started ${sparqlEscapeDateTime(stixMalwareAnalysis.started)}^^xsd:datetime;
+  //stix:analysis_ended ${sparqlEscapeDateTime(stixMalwareAnalysis.ended)}^^xsd:datetime;
+  //stix:result ${sparqlEscapeString(stixMalwareAnalysis.result)};
+  //stix:sample_ref <http://logical/file>.
 }

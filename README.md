@@ -112,6 +112,7 @@ services:
     environment:
       NODE_ENV: "development"
       LOG_INCOMING_DELTA: "true"
+      LOG_INCOMING_SCAN_REQUESTS: "true"
     volumes:
       - ../virus-scanner-service/:/app/
 ```
@@ -124,6 +125,10 @@ The following enviroment variables can be configured:
 
 * `LOG_INCOMING_DELTA (default: "false")`: Log the delta message as
   received from the delta-notifier to the console.
+* `LOG_INCOMING_SCAN_REQUESTS (default: "false")`: Log the requests
+  received by endpoint `/scan`.
+* `MU_APPLICATION_GRAPH (default: "http://mu.semte.ch/application")`:
+  URI of the graph used for looking up files and storing scan results.
 * `VIRUS_SCANNER_CLAMD_USER (default: "clamav")`: User to run the
   ClamAV daemon `clamd` as.
 * The environment variables recognized by
