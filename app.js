@@ -1,14 +1,10 @@
 import { NamedNode, triple } from 'rdflib';
 import bodyParser from 'body-parser';
-import {
-  LOG_INCOMING_DELTA,
-  LOG_INCOMING_SCAN_REQUESTS,
-  MU_APPLICATION_GRAPH,
-} from './config';
+import { LOG_INCOMING_DELTA, LOG_INCOMING_SCAN_REQUESTS } from './config';
 import {
   app,
-  query,
-  update,
+  query, // TODO: Probably need sudo instead.
+  update, // TODO: Probably need sudo instead.
   errorHandler,
   sparqlEscapeDateTime,
   sparqlEscapeString,
@@ -282,12 +278,16 @@ async function getPhysicalFileIRI(logicalFileIRI) {
     PREFIX nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
     SELECT ?physicalFile
     WHERE {
-      GRAPH ${sparqlEscapeUri(MU_APPLICATION_GRAPH)} {
+      GRAPH ?g {
         ?physicalFile nie:dataSource ${sparqlEscapeUri(logicalFileIRI)} .
       }
     }
   `);
   if (result.results.bindings.length)
+    // `[0]` is based on the assumption that, even if there are triples
+    // for the logical file IRI in multiple graphs, they will all be
+    // related to the same physical file IRI, so the array will always
+    // only contain 1 physical file IRI.
     return result.results.bindings[0]['physicalFile'].value;
   return null;
 }
@@ -317,11 +317,19 @@ function filePathFromIRI(physicalFileIRI) {
 async function storeMalwareAnalysis(logicalFileIRI, stixMalwareAnalysis) {
   //PREFIX stix: <http://docs.oasis-open.org/cti/ns/stix#>
   //PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  // GRAPH ${sparqlEscapeUri(MU_APPLICATION_GRAPH)}
+  //INSERT {
+  //GRAPH ?g {
   //<http://data.gift/virus-scanner/analysis/id/1> a stix:MalwareAnalysis;
   //mu:uuid "a-uuid-so-resource-can-render-it";
   //stix:analysis_started ${sparqlEscapeDateTime(stixMalwareAnalysis.started)}^^xsd:datetime;
   //stix:analysis_ended ${sparqlEscapeDateTime(stixMalwareAnalysis.ended)}^^xsd:datetime;
   //stix:result ${sparqlEscapeString(stixMalwareAnalysis.result)};
-  //stix:sample_ref <http://logical/file>.
+  //stix:sample_ref <http://logical/file>.   // or physical file IRI??
+  //}
+  //}
+  //WHERE {
+  //GRAPH ?g {
+  //<share://file> a nfo:FileDataObject  // or logical file IRI ??
+  //}
+  //}
 }
