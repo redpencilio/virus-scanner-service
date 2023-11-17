@@ -3,13 +3,12 @@ import bodyParser from 'body-parser';
 import { LOG_INCOMING_DELTA, LOG_INCOMING_SCAN_REQUESTS } from './config';
 import {
   app,
-  query, // TODO: Probably need sudo instead.
-  update, // TODO: Probably need sudo instead.
   errorHandler,
   sparqlEscapeDateTime,
   sparqlEscapeString,
   sparqlEscapeUri,
 } from 'mu';
+import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 import { Delta } from './lib/delta';
 import { existsSync } from 'node:fs';
 import NodeClam from 'clamscan';
