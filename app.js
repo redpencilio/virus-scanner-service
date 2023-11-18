@@ -7,6 +7,7 @@ import {
   sparqlEscapeDateTime,
   sparqlEscapeString,
   sparqlEscapeUri,
+  uuid,
 } from 'mu';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
 import { Delta } from './lib/delta';
@@ -221,7 +222,7 @@ app.post(
       }
       stixMalwareAnalysis.ended = new Date();
       console.log(stixMalwareAnalysis);
-      storeMalwareAnalysis(logicalFileIRI, stixMalwareAnalysis);
+      storeMalwareAnalysis(logicalFileIRI, stixMalwareAnalysis);  // Or physicalFileIRI?
       console.log();
       res.status(202).send();
     } catch (e) {
@@ -307,28 +308,51 @@ function filePathFromIRI(physicalFileIRI) {
 /**
  * Stores the result of a malware-scan in the database.
  *
- * @param {String} result - The malware scan result, usually one of the values
- *                          from STIX 2.1 Malware Result Vocabulary malware-result-ov:
- *                          "malicious", "suspicious", "benign" or "unknown".
- *                          https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_dtrq0daddkwa
+ * A stix:MalwareAnalysis resource is stored in all graphs containing the
+ * supplied file IRI.
+ *
+ * This function does not lookup and flag related file IRIs. If both the
+ * logical/virtual file IRI and physical/stored file IRI need to be flagged,
+ * call this function again for each IRI.
+ *
+ * @param {String} fileIRI - IRI of the file to be flagged.
+ * @param {Object} stixMalwareAnalysis - The malware analysis details.
+ *        Properties: .started: Timestamp of start of analysis.
+ *                    .ended  : Timestamp of end of analysis.
+ *                    .result : Usually one of the values from
+ *                        STIX 2.1 Malware Result Vocabulary malware-result-ov:
+ *                        "malicious", "suspicious", "benign" or "unknown".
+ *                        https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_dtrq0daddkwa
  * @return TODO: String with id or an entire resource object?
  */
-async function storeMalwareAnalysis(logicalFileIRI, stixMalwareAnalysis) {
-  //PREFIX stix: <http://docs.oasis-open.org/cti/ns/stix#>
-  //PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-  //INSERT {
-  //GRAPH ?g {
-  //<http://data.gift/virus-scanner/analysis/id/1> a stix:MalwareAnalysis;
-  //mu:uuid "a-uuid-so-resource-can-render-it";
-  //stix:analysis_started ${sparqlEscapeDateTime(stixMalwareAnalysis.started)}^^xsd:datetime;
-  //stix:analysis_ended ${sparqlEscapeDateTime(stixMalwareAnalysis.ended)}^^xsd:datetime;
-  //stix:result ${sparqlEscapeString(stixMalwareAnalysis.result)};
-  //stix:sample_ref <http://logical/file>.   // or physical file IRI??
-  //}
-  //}
-  //WHERE {
-  //GRAPH ?g {
-  //<share://file> a nfo:FileDataObject  // or logical file IRI ??
-  //}
-  //}
+async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
+  const malwareAnalysisId = uuid();
+  const malwareAnalysisIri = 'http://data.gift/virus-scanner/analysis/id/'.concat(malwareAnalysisId);
+  try {
+    await update(`
+      PREFIX stix: <http://docs.oasis-open.org/cti/ns/stix#>
+      PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+      PREFIX nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
+      INSERT {
+        GRAPH ?g {
+          ${sparqlEscapeUri(malwareAnalysisIri)}
+            a stix:MalwareAnalysis;
+            mu:uuid ${sparqlEscapeUri(malwareAnalysisId)};
+            stix:analysis_started ${sparqlEscapeDateTime(stixMalwareAnalysis.started)};
+            stix:analysis_ended ${sparqlEscapeDateTime(stixMalwareAnalysis.ended)};
+            stix:result ${sparqlEscapeString(stixMalwareAnalysis.result)};
+            stix:sample_ref ${sparqlEscapeString(fileIRI)} .
+        }
+      }
+      WHERE {
+        GRAPH ?g {
+          ${sparqlEscapeString(fileIRI)} a nfo:FileDataObject .
+          ?s ?p ?o .
+        }
+      }
+    `);
+  } catch (e) {
+    console.log(`Failed to store malware analysis of <${fileIRI}> in triplestore: \n ${e}`);
+    throw e;
+  }
 }
