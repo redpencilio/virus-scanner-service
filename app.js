@@ -341,12 +341,12 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
             stix:analysis_started ${sparqlEscapeDateTime(stixMalwareAnalysis.started)};
             stix:analysis_ended ${sparqlEscapeDateTime(stixMalwareAnalysis.ended)};
             stix:result ${sparqlEscapeString(stixMalwareAnalysis.result)};
-            stix:sample_ref ${sparqlEscapeString(fileIRI)} .
+            stix:sample_ref ${sparqlEscapeUri(fileIRI)} .
         }
       }
       WHERE {
         GRAPH ?g {
-          ${sparqlEscapeString(fileIRI)} a nfo:FileDataObject .
+          ${sparqlEscapeUri(fileIRI)} a nfo:FileDataObject .
           ?s ?p ?o .
         }
       }
