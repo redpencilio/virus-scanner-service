@@ -345,10 +345,10 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
         }
       }
       WHERE {
-        GRAPH ?g {
+        GRAPH ?graph {
           ${sparqlEscapeUri(fileIRI)} a nfo:FileDataObject .
-          ?s ?p ?o .
         }
+        BIND(?graph AS ?g)
       }
     `);
   } catch (e) {
