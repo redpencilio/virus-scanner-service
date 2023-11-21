@@ -151,9 +151,12 @@ app.post(
  * @param {Object} body Request body should be in JSON-format with
  *                      `file` containing a logical file IRI as a single String.
  *                      E.g. { "file": "http://mu.semte.ch/services/file-service/files/6543bc046ea4f3000e00000c" }
- * @return [201] if file was found in database and scan result stored
- *               (even if the scan failed). The stored scan result will
- *               be in response body.
+ * @return [201] if file was found in database, a malware analysis ran and the
+ *               results were sent to the database. The response body contains
+ *               the malware analysis results and the database response.
+ *               - If the scan failed, the result will be "unknown".
+ *               - If databaseResponse is null the result was not inserted in
+ *                 any graph, most likely because file IRI was not in any graph.
  * @return [400] if request malformed.
  * @return [422] if no related physical file is found in database.
  */
@@ -314,9 +317,12 @@ function filePathFromIRI(physicalFileIRI) {
  * A stix:MalwareAnalysis resource is stored in all graphs containing the
  * supplied file IRI.
  *
- * This function does not lookup and flag related file IRIs. If both the
- * logical/virtual file IRI and physical/stored file IRI need to be flagged,
- * call this function again for each IRI.
+ * Notes:
+ * - This function does not lookup and flag related file IRIs. If both the
+ *   logical/virtual file IRI and physical/stored file IRI need to be flagged,
+ *   call this function again for each IRI.
+ * - If fileIRI does not exist in any graph in the database, the returned
+ *   resource object will not have been inserted anywhere in the database.
  *
  * @param {String} fileIRI - IRI of the file to be flagged.
  * @param {Object} stixMalwareAnalysis - The malware analysis details.
@@ -327,14 +333,21 @@ function filePathFromIRI(physicalFileIRI) {
  *                        "malicious", "suspicious", "benign" or "unknown".
  *                        https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_dtrq0daddkwa
  *                    .resultName : JSON string of array of viruses found.
- * @return {Object} Resource object of the created malware analysis.
+ * @return {Object} Properties:
+ *    .resourceObject: JavaScript object representation of the malware
+ *                     analysis resource object.
+ *    .databaseResponse: null if not inserted in any graphs. Otherwise
+ *        .results.bindings.0.callret-0.value {String} Textual database
+ *            response mentioning the graphs in which the malware analysis
+ *            resource object was inserted.
  */
 async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
   const malwareAnalysisId = uuid();
   const malwareAnalysisIri =
     'http://data.gift/virus-scanner/analysis/id/'.concat(malwareAnalysisId);
+  let databaseResponse;
   try {
-    await update(`
+    databaseResponse = await update(`
       PREFIX stix: <http://docs.oasis-open.org/cti/ns/stix#>
       PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
       PREFIX nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
@@ -367,16 +380,19 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
     throw e;
   }
   return {
-    data: {
-      type: 'malware-analyses',
-      id: malwareAnalysisId,
-      attributes: {
-        uri: malwareAnalysisIri,
-        'analysis-started': stixMalwareAnalysis.analysisStarted,
-        'analysis-ended': stixMalwareAnalysis.analysisEnded,
-        result: stixMalwareAnalysis.result,
-        'sample-ref': fileIRI,
+    resourceObject: {
+      data: {
+        type: 'malware-analyses',
+        id: malwareAnalysisId,
+        attributes: {
+          uri: malwareAnalysisIri,
+          'analysis-started': stixMalwareAnalysis.analysisStarted,
+          'analysis-ended': stixMalwareAnalysis.analysisEnded,
+          result: stixMalwareAnalysis.result,
+          'sample-ref': fileIRI,
+        },
       },
     },
+    databaseResponse: databaseResponse,
   };
 }
