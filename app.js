@@ -222,9 +222,12 @@ app.post(
       }
       stixMalwareAnalysis.ended = new Date();
       console.log(stixMalwareAnalysis);
-      storeMalwareAnalysis(logicalFileIRI, stixMalwareAnalysis);  // Or physicalFileIRI?
-      console.log();
-      res.status(202).send();
+      const storeResult = await storeMalwareAnalysis(
+        logicalFileIRI,
+        stixMalwareAnalysis,
+      );
+      console.log(JSON.stringify(storeResult));
+      res.status(201).send(JSON.stringify(storeResult));
     } catch (e) {
       console.log(e);
       res.status(500).send('Uncaught error in /scan: ' + e);
@@ -362,4 +365,17 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
     );
     throw e;
   }
+  return {
+    data: {
+      type: 'malware-analyses',
+      id: malwareAnalysisId,
+      attributes: {
+        uri: malwareAnalysisIri,
+        'analysis-started': stixMalwareAnalysis.started,
+        'analysis-ended': stixMalwareAnalysis.ended,
+        result: stixMalwareAnalysis.result,
+        'sample-ref': fileIRI,
+      },
+    },
+  };
 }
