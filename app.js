@@ -85,8 +85,8 @@ app.post(
         } else {
           filesToScan.push(file);
           try {
-            const fileScanResult = await scanFile(file);
-            const fileHasVirus = fileScanResult.isInfected;
+            const clamscanResult = await clamscanFile(file);
+            const fileHasVirus = clamscanResult.isInfected;
             switch (fileHasVirus) {
               case false:
                 console.log('Clean');
@@ -94,7 +94,7 @@ app.post(
                 break;
               case true:
                 console.log(
-                  'Infected with ' + JSON.stringify(fileScanResult.viruses),
+                  'Infected with ' + JSON.stringify(clamscanResult.viruses),
                 );
                 filesInfected.push(file);
                 break;
@@ -163,8 +163,8 @@ app.post(
   async function (req, res) {
     try {
       const stixMalwareAnalysis = {
-        started: new Date(),
-        ended: undefined,
+        analysisStarted: new Date(),
+        analysisEnded: undefined,
         result: 'unknown',
         resultName: undefined,
       };
@@ -198,8 +198,8 @@ app.post(
         console.log('File not found on disk: ' + JSON.stringify(file));
       } else {
         try {
-          const fileScanResult = await scanFile(file);
-          const fileHasVirus = fileScanResult.isInfected;
+          const clamscanResult = await clamscanFile(file);
+          const fileHasVirus = clamscanResult.isInfected;
           switch (fileHasVirus) {
             case false:
               stixMalwareAnalysis.result = 'benign';
@@ -207,7 +207,7 @@ app.post(
             case true:
               stixMalwareAnalysis.result = 'malicious';
               stixMalwareAnalysis.resultName = JSON.stringify(
-                fileScanResult.viruses,
+                clamscanResult.viruses,
               );
               break;
             case null:
@@ -220,7 +220,7 @@ app.post(
           console.log('Other error while attempting to scan: ' + e);
         }
       }
-      stixMalwareAnalysis.ended = new Date();
+      stixMalwareAnalysis.analysisEnded = new Date();
       console.log(stixMalwareAnalysis);
       const storeResult = await storeMalwareAnalysis(
         logicalFileIRI,
@@ -238,7 +238,7 @@ app.post(
 app.use(errorHandler);
 
 /**
- * Scans a file for viruses.
+ * Calls the clamscan JS library to scan a file for viruses.
  *
  * @async
  * @function
@@ -251,7 +251,7 @@ app.use(errorHandler);
  *                          **NULL**: Unable to scan.
  * - `viruses` (array) An array of any viruses found in the scanned file.
  */
-async function scanFile(path) {
+async function clamscanFile(path) {
   console.log('Running virus scan on file: ' + JSON.stringify(path));
   const scanner = await new NodeClam().init({
     clamscan: {
@@ -320,13 +320,14 @@ function filePathFromIRI(physicalFileIRI) {
  *
  * @param {String} fileIRI - IRI of the file to be flagged.
  * @param {Object} stixMalwareAnalysis - The malware analysis details.
- *        Properties: .started: Timestamp of start of analysis.
- *                    .ended  : Timestamp of end of analysis.
+ *        Properties: .analysisStarted: Timestamp of start of analysis.
+ *                    .analysisEnded  : Timestamp of end of analysis.
  *                    .result : Usually one of the values from
  *                        STIX 2.1 Malware Result Vocabulary malware-result-ov:
  *                        "malicious", "suspicious", "benign" or "unknown".
  *                        https://docs.oasis-open.org/cti/stix/v2.1/cs01/stix-v2.1-cs01.html#_dtrq0daddkwa
- * @return TODO: String with id or an entire resource object?
+ *                    .resultName : JSON string of array of viruses found.
+ * @return {Object} Resource object of the created malware analysis.
  */
 async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
   const malwareAnalysisId = uuid();
@@ -343,10 +344,10 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
             a stix:MalwareAnalysis;
             mu:uuid ${sparqlEscapeUri(malwareAnalysisId)};
             stix:analysis_started ${sparqlEscapeDateTime(
-              stixMalwareAnalysis.started,
+              stixMalwareAnalysis.analysisStarted,
             )};
             stix:analysis_ended ${sparqlEscapeDateTime(
-              stixMalwareAnalysis.ended,
+              stixMalwareAnalysis.analysisEnded,
             )};
             stix:result ${sparqlEscapeString(stixMalwareAnalysis.result)};
             stix:sample_ref ${sparqlEscapeUri(fileIRI)} .
@@ -371,8 +372,8 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
       id: malwareAnalysisId,
       attributes: {
         uri: malwareAnalysisIri,
-        'analysis-started': stixMalwareAnalysis.started,
-        'analysis-ended': stixMalwareAnalysis.ended,
+        'analysis-started': stixMalwareAnalysis.analysisStarted,
+        'analysis-ended': stixMalwareAnalysis.analysisEnded,
         result: stixMalwareAnalysis.result,
         'sample-ref': fileIRI,
       },
