@@ -186,6 +186,15 @@ app.post(
         return res.status(400).send('`file` not a non-empty String');
       }
 
+      if (logicalFileIRI.slice(0, 8) === 'share://') {
+        // TODO: Be flexible and lookup the logical file IRI? Can we assume
+        //       that, even if the physical file IRI exists in multiple graphs,
+        //       they will all be related to the same logical file IRI?
+        return res
+          .status(422)
+          .send('`file` is a physical file IRI, should be a logical file IRI');
+      }
+
       const physicalFileIRI = await getPhysicalFileIRI(logicalFileIRI);
       if (physicalFileIRI === null) {
         return res
