@@ -327,7 +327,8 @@ function filePathFromIRI(physicalFileIRI) {
  */
 async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
   const malwareAnalysisId = uuid();
-  const malwareAnalysisIri = 'http://data.gift/virus-scanner/analysis/id/'.concat(malwareAnalysisId);
+  const malwareAnalysisIri =
+    'http://data.gift/virus-scanner/analysis/id/'.concat(malwareAnalysisId);
   try {
     await update(`
       PREFIX stix: <http://docs.oasis-open.org/cti/ns/stix#>
@@ -338,8 +339,12 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
           ${sparqlEscapeUri(malwareAnalysisIri)}
             a stix:MalwareAnalysis;
             mu:uuid ${sparqlEscapeUri(malwareAnalysisId)};
-            stix:analysis_started ${sparqlEscapeDateTime(stixMalwareAnalysis.started)};
-            stix:analysis_ended ${sparqlEscapeDateTime(stixMalwareAnalysis.ended)};
+            stix:analysis_started ${sparqlEscapeDateTime(
+              stixMalwareAnalysis.started,
+            )};
+            stix:analysis_ended ${sparqlEscapeDateTime(
+              stixMalwareAnalysis.ended,
+            )};
             stix:result ${sparqlEscapeString(stixMalwareAnalysis.result)};
             stix:sample_ref ${sparqlEscapeUri(fileIRI)} .
         }
@@ -352,7 +357,9 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
       }
     `);
   } catch (e) {
-    console.log(`Failed to store malware analysis of <${fileIRI}> in triplestore: \n ${e}`);
+    console.log(
+      `Failed to store malware analysis of <${fileIRI}> in triplestore: \n ${e}`,
+    );
     throw e;
   }
 }
