@@ -165,12 +165,6 @@ app.post(
   bodyParser.json({ limit: '50mb' }),
   async function (req, res) {
     try {
-      const stixMalwareAnalysis = {
-        analysisStarted: new Date(),
-        analysisEnded: undefined,
-        result: 'unknown',
-        resultName: undefined,
-      };
       const body = req.body;
       if (LOG_INCOMING_SCAN_REQUESTS) {
         console.log(`Receiving scan request : ${JSON.stringify(body)}`);
@@ -204,37 +198,9 @@ app.post(
           .send('No physical file IRI found for: ' + logicalFileIRI);
       }
 
-      try {
-        const file = filePathFromIRI(physicalFileIRI);
+      const scanFileResult = await scanFile(logicalFileIRI);
+      const stixMalwareAnalysis = scanFileResult.stixMalwareAnalysis;
 
-        console.log({ logicalFileIRI, physicalFileIRI, file });
-
-        if (!existsSync(file)) {
-          throw new Error('File not found on disk: ' + JSON.stringify(file));
-        }
-        const clamscanResult = await clamscanFile(file);
-        const fileHasVirus = clamscanResult.isInfected;
-        switch (fileHasVirus) {
-          case false:
-            stixMalwareAnalysis.result = 'benign';
-            break;
-          case true:
-            stixMalwareAnalysis.result = 'malicious';
-            stixMalwareAnalysis.resultName = JSON.stringify(
-              clamscanResult.viruses,
-            );
-            break;
-          case null:
-            console.log('clamscan JS returned null: Unable to scan');
-            break;
-          default:
-            throw new Error('Unexpected return value from clamscan JS');
-        }
-      } catch (e) {
-        console.log('Other error while attempting to scan: ' + e);
-      }
-      stixMalwareAnalysis.analysisEnded = new Date();
-      console.log(stixMalwareAnalysis);
       const storeResult = await storeMalwareAnalysis(
         logicalFileIRI,
         stixMalwareAnalysis,
@@ -249,6 +215,67 @@ app.post(
 );
 
 app.use(errorHandler);
+
+/**
+ * Scans a file for viruses.
+ *
+ * @async
+ * @function
+ * @param {String} logicalFileIRI - IRI of the logical/virtual file to scan.
+ * @returns {Object} Properties:
+ *          .stixMalwareAnalysis - The malware analysis details. Remarks:
+ *                                 - result: If "unknown", see .error.
+ *          .error - Error object (if any).
+ */
+async function scanFile(logicalFileIRI) {
+  const ret = {
+    stixMalwareAnalysis: {
+      analysisStarted: new Date(),
+      analysisEnded: undefined,
+      result: 'unknown',
+      resultName: undefined,
+    },
+    error: undefined,
+  };
+
+  try {
+    const physicalFileIRI = await getPhysicalFileIRI(logicalFileIRI);
+    if (physicalFileIRI === null) {
+      throw new Error('No physical file IRI found for: ' + logicalFileIRI);
+    }
+
+    const file = filePathFromIRI(physicalFileIRI);
+
+    console.log({ logicalFileIRI, physicalFileIRI, file });
+
+    if (!existsSync(file)) {
+      throw new Error('File not found on disk: ' + JSON.stringify(file));
+    }
+    const clamscanResult = await clamscanFile(file);
+    const fileHasVirus = clamscanResult.isInfected;
+    switch (fileHasVirus) {
+      case false:
+        ret.stixMalwareAnalysis.result = 'benign';
+        break;
+      case true:
+        ret.stixMalwareAnalysis.result = 'malicious';
+        ret.stixMalwareAnalysis.resultName = JSON.stringify(
+          clamscanResult.viruses,
+        );
+        break;
+      case null:
+        throw new Error('clamscan JS returned null: Unable to scan');
+        break; // eslint-disable-line no-unreachable
+      default:
+        throw new Error('Unexpected return value from clamscan JS');
+    }
+  } catch (e) {
+    ret.error = e;
+  }
+  ret.stixMalwareAnalysis.analysisEnded = new Date();
+  console.log(ret);
+  return ret;
+}
 
 /**
  * Calls the clamscan JS library to scan a file for viruses.
