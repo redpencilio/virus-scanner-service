@@ -226,7 +226,10 @@ app.use(errorHandler);
  * @returns {Object} Properties:
  *          .stixMalwareAnalysis - The malware analysis details. Remarks:
  *                                 - result: If "unknown", see .error.
+ *                                 - sampleRef: Not set, see .lookups.
  *          .error - Error object (if any).
+ *          .lookups - Results of lookups from the requested file IRI to
+ *                     the physical file path.
  */
 async function scanFile(fileIRI) {
   const ret = {
@@ -237,10 +240,13 @@ async function scanFile(fileIRI) {
       resultName: undefined,
     },
     error: undefined,
+    lookups: undefined,
   };
+  let physicalFileIRI;
+  let file;
 
   try {
-    const physicalFileIRI =
+    physicalFileIRI =
       fileIRI.slice(0, 8) === 'share://'
         ? fileIRI
         : await getPhysicalFileIRI(fileIRI);
@@ -248,9 +254,7 @@ async function scanFile(fileIRI) {
       throw new Error('No physical file IRI found for: ' + fileIRI);
     }
 
-    const file = filePathFromIRI(physicalFileIRI);
-
-    console.log({ fileIRI, physicalFileIRI, file });
+    file = filePathFromIRI(physicalFileIRI);
 
     if (!existsSync(file)) {
       throw new Error('File not found on disk: ' + JSON.stringify(file));
@@ -277,6 +281,11 @@ async function scanFile(fileIRI) {
     ret.error = e;
   }
   ret.stixMalwareAnalysis.analysisEnded = new Date();
+  ret.lookups = {
+    requestedFileIRI: fileIRI,
+    physicalFileIRI,
+    physicalFilePath: file,
+  };
   console.log(ret);
   return ret;
 }
