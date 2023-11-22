@@ -221,13 +221,14 @@ app.use(errorHandler);
  *
  * @async
  * @function
- * @param {String} logicalFileIRI - IRI of the logical/virtual file to scan.
+ * @param {String} fileIRI - IRI file to scan. This can be a logical/virtual
+ *                           file IRI or a physical/stored file IRI.
  * @returns {Object} Properties:
  *          .stixMalwareAnalysis - The malware analysis details. Remarks:
  *                                 - result: If "unknown", see .error.
  *          .error - Error object (if any).
  */
-async function scanFile(logicalFileIRI) {
+async function scanFile(fileIRI) {
   const ret = {
     stixMalwareAnalysis: {
       analysisStarted: new Date(),
@@ -239,14 +240,17 @@ async function scanFile(logicalFileIRI) {
   };
 
   try {
-    const physicalFileIRI = await getPhysicalFileIRI(logicalFileIRI);
+    const physicalFileIRI =
+      fileIRI.slice(0, 8) === 'share://'
+        ? fileIRI
+        : await getPhysicalFileIRI(fileIRI);
     if (physicalFileIRI === null) {
-      throw new Error('No physical file IRI found for: ' + logicalFileIRI);
+      throw new Error('No physical file IRI found for: ' + fileIRI);
     }
 
     const file = filePathFromIRI(physicalFileIRI);
 
-    console.log({ logicalFileIRI, physicalFileIRI, file });
+    console.log({ fileIRI, physicalFileIRI, file });
 
     if (!existsSync(file)) {
       throw new Error('File not found on disk: ' + JSON.stringify(file));
