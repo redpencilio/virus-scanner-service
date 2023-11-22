@@ -195,6 +195,8 @@ app.post(
           .send('`file` is a physical file IRI, should be a logical file IRI');
       }
 
+      // TODO: Check for existence of `<logicalFileIRI> a nfo:FileDataObject`?
+
       const physicalFileIRI = await getPhysicalFileIRI(logicalFileIRI);
       if (physicalFileIRI === null) {
         return res
@@ -202,35 +204,34 @@ app.post(
           .send('No physical file IRI found for: ' + logicalFileIRI);
       }
 
-      const file = filePathFromIRI(physicalFileIRI);
+      try {
+        const file = filePathFromIRI(physicalFileIRI);
 
-      console.log({ logicalFileIRI, physicalFileIRI, file });
+        console.log({ logicalFileIRI, physicalFileIRI, file });
 
-      if (!existsSync(file)) {
-        console.log('File not found on disk: ' + JSON.stringify(file));
-      } else {
-        try {
-          const clamscanResult = await clamscanFile(file);
-          const fileHasVirus = clamscanResult.isInfected;
-          switch (fileHasVirus) {
-            case false:
-              stixMalwareAnalysis.result = 'benign';
-              break;
-            case true:
-              stixMalwareAnalysis.result = 'malicious';
-              stixMalwareAnalysis.resultName = JSON.stringify(
-                clamscanResult.viruses,
-              );
-              break;
-            case null:
-              console.log('clamscan JS returned null: Unable to scan');
-              break;
-            default:
-              throw new Error('Unexpected return value from clamscan JS');
-          }
-        } catch (e) {
-          console.log('Other error while attempting to scan: ' + e);
+        if (!existsSync(file)) {
+          throw new Error('File not found on disk: ' + JSON.stringify(file));
         }
+        const clamscanResult = await clamscanFile(file);
+        const fileHasVirus = clamscanResult.isInfected;
+        switch (fileHasVirus) {
+          case false:
+            stixMalwareAnalysis.result = 'benign';
+            break;
+          case true:
+            stixMalwareAnalysis.result = 'malicious';
+            stixMalwareAnalysis.resultName = JSON.stringify(
+              clamscanResult.viruses,
+            );
+            break;
+          case null:
+            console.log('clamscan JS returned null: Unable to scan');
+            break;
+          default:
+            throw new Error('Unexpected return value from clamscan JS');
+        }
+      } catch (e) {
+        console.log('Other error while attempting to scan: ' + e);
       }
       stixMalwareAnalysis.analysisEnded = new Date();
       console.log(stixMalwareAnalysis);
