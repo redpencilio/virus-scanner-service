@@ -60,6 +60,8 @@ app.post(
         return res.status(204).send();
       }
 
+      res.status(202).send();
+
       const physicalFiles = [...new Set(allPhysicalFiles)]; //make them unique
 
       console.log(
@@ -136,8 +138,6 @@ app.post(
         '  - Other error                            : ' +
           JSON.stringify(filesOtherError),
       );
-
-      res.status(202).send();
     } catch (error) {
       console.log(error);
       res.status(500).send();
