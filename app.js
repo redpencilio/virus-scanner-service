@@ -68,8 +68,6 @@ app.post(
         'Physical file IRIs to be processed: ' + JSON.stringify(physicalFiles),
       );
 
-      const physicalFilePaths = physicalFiles.map(filePathFromIRI);
-
       // TODO: Combine in an object.
       // TODO: Transpose structure from results > file to files > result,
       //       to allow for more details per result, e.g. viruses found.
@@ -80,32 +78,46 @@ app.post(
       const filesUnableToScan = [];
       const filesOtherError = [];
 
-      for (const file of physicalFilePaths) {
-        if (!existsSync(file)) {
+      for (const file of physicalFiles) {
+        const scanFileResult = await scanFile(file);
+
+        if (
+          scanFileResult.error &&
+          scanFileResult.error.message.slice(0, 22) === 'File not found on disk'
+        ) {
           console.log('File not found: ' + JSON.stringify(file));
           filesNotFound.push(file);
         } else {
           filesToScan.push(file);
           try {
-            const clamscanResult = await clamscanFile(file);
-            const fileHasVirus = clamscanResult.isInfected;
-            switch (fileHasVirus) {
-              case false:
+            switch (scanFileResult.stixMalwareAnalysis.result) {
+              case 'benign':
                 console.log('Clean');
                 filesClean.push(file);
                 break;
-              case true:
+              case 'malicious':
                 console.log(
-                  'Infected with ' + JSON.stringify(clamscanResult.viruses),
+                  'Infected with ' +
+                    JSON.stringify(
+                      scanFileResult.stixMalwareAnalysis.resultName,
+                    ),
                 );
                 filesInfected.push(file);
                 break;
-              case null:
-                console.log('Unable to scan');
-                filesUnableToScan.push(file);
+              case 'unknown':
+                if (
+                  scanFileResult.error &&
+                  scanFileResult.error.message.slice(0, 40) ===
+                    'Unexpected return value from clamscan JS'
+                ) {
+                  throw new Error('Unexpected return value from clamscan JS.');
+                } else {
+                  console.log('Unable to scan');
+                  filesUnableToScan.push(file);
+                }
                 break;
               default:
-                throw new Error('Unexpected return value from hasVirus().');
+                throw new Error('Unexpected return value from scanFile().');
             }
           } catch (e) {
             console.warn('Other error: ' + e);
