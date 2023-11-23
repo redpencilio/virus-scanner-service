@@ -199,7 +199,16 @@ app.post(
         stixMalwareAnalysis,
       );
       console.log(JSON.stringify(storeResult));
-      res.status(201).send(JSON.stringify(storeResult));
+
+      res.status(201).send(
+        JSON.stringify({
+          file: logicalFileIRI,
+          ...scanFileResult,
+          // https://stackoverflow.com/questions/18391212/is-it-not-possible-to-stringify-an-error-using-json-stringify
+          error: String(scanFileResult.error),
+          ...storeResult,
+        }),
+      );
     } catch (e) {
       console.log(e);
       res.status(500).send('Uncaught error in /scan: ' + e);
