@@ -191,13 +191,6 @@ app.post(
 
       // TODO: Check for existence of `<logicalFileIRI> a nfo:FileDataObject`?
 
-      const physicalFileIRI = await getPhysicalFileIRI(logicalFileIRI);
-      if (physicalFileIRI === null) {
-        return res
-          .status(422)
-          .send('No physical file IRI found for: ' + logicalFileIRI);
-      }
-
       const scanFileResult = await scanFile(logicalFileIRI);
       const stixMalwareAnalysis = scanFileResult.stixMalwareAnalysis;
 
