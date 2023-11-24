@@ -14,6 +14,8 @@ import { Delta } from './lib/delta';
 import { existsSync } from 'node:fs';
 import NodeClam from 'clamscan';
 
+const STIX_MALWARE_RESULT_OV = ['benign', 'suspicious', 'malicious', 'unknown'];
+
 app.get('/', function (req, res) {
   res.send('Hello from virus-scanner-service');
 });
@@ -68,91 +70,44 @@ app.post(
         'Physical file IRIs to be processed: ' + JSON.stringify(physicalFiles),
       );
 
-      // TODO: Combine in an object.
-      // TODO: Transpose structure from results > file to files > result,
-      //       to allow for more details per result, e.g. viruses found.
-      const filesNotFound = [];
-      const filesToScan = []; // TODO: Remove, because union of the arrays below.
-      const filesClean = [];
-      const filesInfected = []; // TODO: Include viruses found per file.
-      const filesUnableToScan = [];
-      const filesOtherError = [];
+      const fileResults = [];
 
       for (const file of physicalFiles) {
         const scanFileResult = await scanFile(file);
 
-        if (
-          scanFileResult.error &&
-          scanFileResult.error.message.slice(0, 22) === 'File not found on disk'
-        ) {
-          console.log('File not found: ' + JSON.stringify(file));
-          filesNotFound.push(file);
-        } else {
-          filesToScan.push(file);
-          try {
-            switch (scanFileResult.stixMalwareAnalysis.result) {
-              case 'benign':
-                console.log('Clean');
-                filesClean.push(file);
-                break;
-              case 'malicious':
-                console.log(
-                  'Infected with ' +
-                    JSON.stringify(
-                      scanFileResult.stixMalwareAnalysis.resultName,
-                    ),
-                );
-                filesInfected.push(file);
-                break;
-              case 'unknown':
-                if (
-                  scanFileResult.error &&
-                  scanFileResult.error.message.slice(0, 40) ===
-                    'Unexpected return value from clamscan JS'
-                ) {
-                  throw new Error('Unexpected return value from clamscan JS.');
-                } else {
-                  console.log('Unable to scan');
-                  filesUnableToScan.push(file);
-                }
-                break;
-              default:
-                throw new Error('Unexpected return value from scanFile().');
-            }
-          } catch (e) {
-            console.warn('Other error: ' + e);
-            filesOtherError.push(file);
-          }
-        }
+        fileResults.push({
+          file,
+          ...scanFileResult,
+        });
       }
 
-      console.log(
-        '- Files not found by virus-scanner-service : ' +
-          JSON.stringify(filesNotFound),
-      );
-      console.log(
-        '- Files sent to clamscan JS                : ' +
-          JSON.stringify(filesToScan),
-      );
-      console.log(
-        '  - Clean                                  : ' +
-          JSON.stringify(filesClean),
-      );
-      console.log(
-        '  - Infected                               : ' +
-          JSON.stringify(filesInfected),
-      );
-      console.log(
-        '  - Unable to scan                         : ' +
-          JSON.stringify(filesUnableToScan),
-      );
-      console.log(
-        '  - Other error                            : ' +
-          JSON.stringify(filesOtherError),
-      );
-    } catch (error) {
-      console.log(error);
-      res.status(500).send();
+      console.log('Finished processing files.');
+      console.log('\nDetailed results per file:');
+      console.dir(fileResults, { depth: null });
+
+      console.log('\nFiles per STIX Malware Analysis result:');
+      const resultValues = [
+        ...new Set([
+          ...STIX_MALWARE_RESULT_OV,
+          ...fileResults
+            .map((fileResult) => fileResult.stixMalwareAnalysis.result)
+            .sort(),
+        ]),
+      ];
+      resultValues.map((resultValue) => {
+        console.log('- ' + resultValue + ' :');
+        console.log(
+          fileResults
+            .filter(
+              (fileResult) =>
+                fileResult.stixMalwareAnalysis.result === resultValue,
+            )
+            .map((fileResult) => fileResult.file),
+        );
+      });
+    } catch (e) {
+      console.log(e);
+      res.status(500).send('Uncaught error in /delta: ' + e);
     }
   },
 );
