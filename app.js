@@ -111,6 +111,27 @@ app.post(
             .map((fileResult) => fileResult.file),
         );
       });
+
+      // TODO: Let storeMalwareAnalysis() run a SELECT query after the insert
+      //       to check in which (if any) graphs the resource was inserted?
+      //       Would be more reliable and easier to parse.
+      const filesNoDatabaseUpdate = fileResults.filter(
+        (fileResult) =>
+          !(
+            fileResult.databaseResponse?.results?.bindings[0]?.['callret-0']
+              ?.value &&
+            fileResult.databaseResponse?.results?.bindings[0]?.[
+              'callret-0'
+            ]?.value.match(' -- done')
+          ),
+      );
+      if (filesNoDatabaseUpdate.length) {
+        console.log(
+          '\nFiles for which the database response indicates that the ' +
+            'malware analysis resource object was not added to any graph:',
+        );
+        console.dir(filesNoDatabaseUpdate, { depth: null });
+      }
     } catch (e) {
       console.log(e);
       res.status(500).send('Uncaught error in /delta: ' + e);
@@ -359,10 +380,10 @@ function filePathFromIRI(physicalFileIRI) {
  * @return {Object} Properties:
  *    .resourceObject: JavaScript object representation of the malware
  *                     analysis resource object.
- *    .databaseResponse: null if not inserted in any graphs. Otherwise
- *        .results.bindings.0.callret-0.value {String} Textual database
+ *    .databaseResponse: null if not inserted in any graph. Otherwise
+ *        .results.bindings[0].['callret-0'].value {String} Textual database
  *            response mentioning the graphs in which the malware analysis
- *            resource object was inserted.
+ *            resource object was inserted (may still be 0, check response).
  */
 async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
   const ret = {
