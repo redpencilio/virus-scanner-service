@@ -75,9 +75,15 @@ app.post(
       for (const file of physicalFiles) {
         const scanFileResult = await scanFile(file);
 
+        const storeResult = await storeMalwareAnalysis(
+          file,
+          scanFileResult.stixMalwareAnalysis,
+        );
+
         fileResults.push({
           file,
           ...scanFileResult,
+          ...storeResult,
         });
       }
 
