@@ -192,13 +192,11 @@ app.post(
       // TODO: Check for existence of `<logicalFileIRI> a nfo:FileDataObject`?
 
       const scanFileResult = await scanFile(logicalFileIRI);
-      const stixMalwareAnalysis = scanFileResult.stixMalwareAnalysis;
 
       const storeResult = await storeMalwareAnalysis(
         logicalFileIRI,
-        stixMalwareAnalysis,
+        scanFileResult.stixMalwareAnalysis,
       );
-      console.log(JSON.stringify(storeResult));
 
       res.status(201).send(
         JSON.stringify({
@@ -394,9 +392,15 @@ function filePathFromIRI(physicalFileIRI) {
  *            resource object was inserted.
  */
 async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
+  const ret = {
+    resourceObject: undefined,
+    databaseResponse: undefined,
+  };
+
   const malwareAnalysisId = uuid();
   const malwareAnalysisIri =
     'http://data.gift/virus-scanner/analysis/id/'.concat(malwareAnalysisId);
+
   let databaseResponse;
   try {
     databaseResponse = await update(`
@@ -431,20 +435,21 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
     );
     throw e;
   }
-  return {
-    resourceObject: {
-      data: {
-        type: 'malware-analyses',
-        id: malwareAnalysisId,
-        attributes: {
-          uri: malwareAnalysisIri,
-          'analysis-started': stixMalwareAnalysis.analysisStarted,
-          'analysis-ended': stixMalwareAnalysis.analysisEnded,
-          result: stixMalwareAnalysis.result,
-          'sample-ref': fileIRI,
-        },
+
+  ret.resourceObject = {
+    data: {
+      type: 'malware-analyses',
+      id: malwareAnalysisId,
+      attributes: {
+        uri: malwareAnalysisIri,
+        'analysis-started': stixMalwareAnalysis.analysisStarted,
+        'analysis-ended': stixMalwareAnalysis.analysisEnded,
+        result: stixMalwareAnalysis.result,
+        'sample-ref': fileIRI,
       },
     },
-    databaseResponse: databaseResponse,
   };
+  ret.databaseResponse = databaseResponse;
+  console.log(ret);
+  return ret;
 }
