@@ -39,7 +39,7 @@ app.post(
         return res.status(204).send();
       }
 
-      const allFiles = delta
+      const filesInDelta = delta
         .getInsertsFor(
           triple(
             undefined,
@@ -51,28 +51,26 @@ app.post(
         )
         .map((insert) => insert.subject.value);
 
-      const allPhysicalFiles = allFiles.filter(
-        (fileIRI) => fileIRI.slice(0, 8) === 'share://',
+      const logicalFilesInDelta = filesInDelta.filter(
+        (fileIRI) => fileIRI.slice(0, 8) !== 'share://',
       );
 
-      if (!allPhysicalFiles.length) {
+      if (!logicalFilesInDelta.length) {
         console.log(
-          'No FileDataObject inserts for physical files. Nothing should happen.',
+          'No FileDataObject inserts for logical files. Nothing should happen.',
         );
         return res.status(204).send();
       }
 
       res.status(202).send();
 
-      const physicalFiles = [...new Set(allPhysicalFiles)]; //make them unique
+      const filesToScan = [...new Set(logicalFilesInDelta)]; //make them unique
 
-      console.log(
-        'Physical file IRIs to be processed: ' + JSON.stringify(physicalFiles),
-      );
+      console.log('File IRIs to be scanned: ' + JSON.stringify(filesToScan));
 
       const fileResults = [];
 
-      for (const file of physicalFiles) {
+      for (const file of filesToScan) {
         const scanFileResult = await scanFile(file);
 
         const storeResult = await storeMalwareAnalysis(
@@ -87,7 +85,7 @@ app.post(
         });
       }
 
-      console.log('Finished processing files.');
+      console.log('Finished scanning files.');
       console.log('\nDetailed results per file:');
       console.dir(fileResults, { depth: null });
 
