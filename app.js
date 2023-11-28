@@ -403,7 +403,7 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
         GRAPH ?g {
           ${sparqlEscapeUri(malwareAnalysisIri)}
             a stix:MalwareAnalysis;
-            mu:uuid ${sparqlEscapeUri(malwareAnalysisId)};
+            mu:uuid ${sparqlEscapeString(malwareAnalysisId)};
             stix:analysis_started ${sparqlEscapeDateTime(
               stixMalwareAnalysis.analysisStarted,
             )};
