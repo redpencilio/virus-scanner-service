@@ -133,6 +133,20 @@ app.post(
     } catch (e) {
       console.log(e);
       res.status(500).send('Uncaught error in /delta: ' + e);
+      // TODO: Re-throw error? Because not sure if the response 500
+      //       will be received (e.g. /delta already sent 202 or /post
+      //       connection timeout during long scan). If the result was
+      //       not "benign", but not stored because of an error, an
+      //       earlier "benign" result for the same file will remain the
+      //       latest result. Perhaps such errors should require more
+      //       attention.
+      //       OTOH: - Re-throwing lets the entire service crash.
+      //       - Perhaps it is the user's responsibility anyway to
+      //       check that the last malware-analyse is recent enough.
+      //       - Already a note about this in README.
+      //       Could be somewhat mitigated by storing a malware analysis
+      //       with only analysis-started before the scan, and update it
+      //       after the scan.
     }
   },
 );
@@ -203,6 +217,7 @@ app.post(
     } catch (e) {
       console.log(e);
       res.status(500).send('Uncaught error in /scan: ' + e);
+      // TODO: Same question as for /delta: Re-throw error?
     }
   },
 );
@@ -391,6 +406,8 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
   };
 
   const malwareAnalysisId = uuid();
+  // TODO: Not http://data.gift/id/virus-scanner/analysis/1 ?
+  //       or: http://data.gift/services/id/virus-scanner/analysis/1 ?
   const malwareAnalysisIri =
     'http://data.gift/virus-scanner/analysis/id/'.concat(malwareAnalysisId);
 
@@ -434,6 +451,8 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
       type: 'malware-analyses',
       id: malwareAnalysisId,
       attributes: {
+        // TODO: Ok to include uri? Not a property in database, but
+        //       mu-cl-resource include-uri also adds it as an attribute.
         uri: malwareAnalysisIri,
         'analysis-started': stixMalwareAnalysis.analysisStarted,
         'analysis-ended': stixMalwareAnalysis.analysisEnded,
@@ -441,6 +460,7 @@ async function storeMalwareAnalysis(fileIRI, stixMalwareAnalysis) {
         'sample-ref': fileIRI,
       },
     },
+    // TODO: links.self
   };
   ret.databaseResponse = databaseResponse;
   console.log(ret);
