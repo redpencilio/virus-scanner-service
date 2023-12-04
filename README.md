@@ -60,6 +60,24 @@ Add rules to `dispatcher.ex` to dispatch requests to this service. E.g.
 like for mu-cl-resources described further below?
 Conflict on `get`: hello from virus-scanner vs mu-cl-resources
 
+The host `virus-scanner` in the forward URL reflects the name of the
+file service in the `docker-compose.yml` file.
+
+Update the authorization configuration `config/authorization/config.ex`
+to make sure the user has appropriate read/write access on the resource
+type `stix:MalwareAnalysis`. E.g.
+
+```elixir
+    ...
+    constraint: %ResourceConstraint{
+      resource_types: [
+        "http://docs.oasis-open.org/cti/ns/stix#MalwareAnalysis",
+        ...
+      ]
+    }
+    ...
+```
+
 Add delta-notifier to your stack as described in the [delta-notifier
 documentation](https://github.com/mu-semtech/delta-notifier#readme).
 Then configure delta-notifier to send relevant deltas to virus-scanner
