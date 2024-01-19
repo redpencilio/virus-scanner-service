@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/peternowee/virus-scanner-service.git"
+    "url": "git+https://github.com/redpencilio/virus-scanner-service.git"
   },
   "author": "redpencil.io",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/peternowee/virus-scanner-service/issues"
+    "url": "https://github.com/redpencilio/virus-scanner-service/issues"
   },
-  "homepage": "https://github.com/peternowee/virus-scanner-service#readme",
+  "homepage": "https://github.com/redpencilio/virus-scanner-service#readme",
   "devDependencies": {
     "eslint": "^8.50.0",
     "eslint-config-prettier": "^9.0.0",
